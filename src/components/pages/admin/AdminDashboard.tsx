@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSidebar } from "@/context/SidebarContext";
 import TopNavigation from "../../dashboard/layout/TopNavigation";
 import Sidebar from "../../dashboard/layout/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Shield, Users, UserCheck } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user, isAdmin } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, setIsCollapsed } = useSidebar();
   const [activeTab, setActiveTab] = useState("users");
 
   // Redirect if not an admin

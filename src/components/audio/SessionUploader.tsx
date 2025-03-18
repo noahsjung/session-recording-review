@@ -34,9 +34,22 @@ interface SessionUploaderProps {
     title: string;
     notes: string;
     supervisorId: string;
+    sessionType?: string;
   }) => Promise<void>;
   className?: string;
 }
+
+// Session types
+const sessionTypes = [
+  "Initial Assessment",
+  "Follow-up",
+  "Cognitive Behavioral Therapy",
+  "Family Therapy",
+  "Play Therapy",
+  "Group Session",
+  "Crisis Intervention",
+  "Other",
+];
 
 const SessionUploader = ({
   supervisors,
@@ -46,6 +59,7 @@ const SessionUploader = ({
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [supervisorId, setSupervisorId] = useState("");
+  const [sessionType, setSessionType] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
@@ -138,12 +152,14 @@ const SessionUploader = ({
         title,
         notes,
         supervisorId,
+        sessionType,
       });
 
       // Reset form
       setTitle("");
       setNotes("");
       setSupervisorId("");
+      setSessionType("");
       setFile(null);
       setDuration(null);
       if (fileInputRef.current) {
@@ -187,6 +203,22 @@ const SessionUploader = ({
               onChange={(e) => setTitle(e.target.value)}
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sessionType">Session Type</Label>
+            <Select value={sessionType} onValueChange={setSessionType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a session type" />
+              </SelectTrigger>
+              <SelectContent>
+                {sessionTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

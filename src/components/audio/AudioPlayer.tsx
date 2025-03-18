@@ -6,49 +6,47 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  MessageSquare,
 } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
+import { Slider } from "../ui/slider";
+
+interface Marker {
+  id: string;
+  timestamp: number;
+  endTimestamp?: number;
+}
 
 interface AudioPlayerProps {
   src: string;
-  feedbackMarkers?: { timestamp: number; id: string }[];
-  onMarkerClick?: (id: string) => void;
-  className?: string;
+  feedbackMarkers?: Marker[];
+  onMarkerClick?: (markerId: string) => void;
+  onTimeUpdate?: (time: number) => void;
+  onAddFeedback?: () => void;
 }
 
-const AudioPlayer = ({
+const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+};
+
+const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src,
   feedbackMarkers = [],
   onMarkerClick,
-  className,
-}: AudioPlayerProps) => {
-  const audioRef = useRef<HTMLAudioElement>(null);
+  onTimeUpdate,
+  onAddFeedback,
+}) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
-  const [audioData, setAudioData] = useState<number[]>([]);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 
-  // Load audio data for visualization
-  useEffect(() => {
-    if (!src) return;
-
-    // This is a placeholder for actual audio data visualization
-    // In a real implementation, you would analyze the audio file
-    // and extract frequency data for visualization
-    const generatePlaceholderData = () => {
-      const data = [];
-      for (let i = 0; i < 100; i++) {
-        data.push(Math.random() * 0.8 + 0.2); // Values between 0.2 and 1
-      }
-      setAudioData(data);
-    };
-
-    generatePlaceholderData();
-  }, [src]);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const volumeControlRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -56,15 +54,12 @@ const AudioPlayer = ({
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
+      if (onTimeUpdate) {
+        onTimeUpdate(audio.currentTime);
+      }
     };
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-    };
+    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleEnded = () => setIsPlaying(false);
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
@@ -75,140 +70,101 @@ const AudioPlayer = ({
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, []);
+  }, [onTimeUpdate]);
 
-  const togglePlayPause = () => {
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (isPlaying) {
+      audio.play().catch(() => setIsPlaying(false));
+    } else {
       audio.pause();
-    } else {
-      audio.play();
     }
+  }, [isPlaying]);
 
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleSeek = (value: number[]) => {
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const newTime = value[0];
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-  };
+    audio.volume = isMuted ? 0 : volume;
+  }, [volume, isMuted]);
 
-  // Method to seek to a specific timestamp (for external use)
-  const seekToTimestamp = (timestamp: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
+  const togglePlayPause = () => setIsPlaying(!isPlaying);
 
-    audio.currentTime = timestamp;
-    setCurrentTime(timestamp);
-    if (!isPlaying) {
-      audio.play();
-      setIsPlaying(true);
+  const handleSeek = (values: number[]) => {
+    const newTime = values[0];
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
     }
   };
 
-  const handleVolumeChange = (value: number[]) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const newVolume = value[0];
-    audio.volume = newVolume;
+  const handleVolumeChange = (values: number[]) => {
+    const newVolume = values[0];
     setVolume(newVolume);
-
-    if (newVolume === 0) {
-      setIsMuted(true);
-    } else if (isMuted) {
+    if (newVolume > 0 && isMuted) {
       setIsMuted(false);
     }
   };
 
-  const toggleMute = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isMuted) {
-      audio.volume = volume || 1;
-      setIsMuted(false);
-    } else {
-      audio.volume = 0;
-      setIsMuted(true);
-    }
-  };
+  const toggleMute = () => setIsMuted(!isMuted);
 
   const skipBackward = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const newTime = Math.max(0, currentTime - 10);
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-    if (!isPlaying) {
-      audio.play();
-      setIsPlaying(true);
+    if (audioRef.current) {
+      const newTime = Math.max(audioRef.current.currentTime - 10, 0);
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
     }
   };
 
   const skipForward = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const newTime = Math.min(duration, currentTime + 10);
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-    if (!isPlaying) {
-      audio.play();
-      setIsPlaying(true);
+    if (audioRef.current) {
+      const newTime = Math.min(audioRef.current.currentTime + 10, duration);
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
     }
   };
 
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-  };
-
   return (
-    <div className={cn("bg-white rounded-lg shadow-md p-4", className)}>
+    <div className="w-full p-4 bg-white rounded-lg shadow-sm">
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      {/* Audio visualization */}
-      <div className="relative h-24 mb-4 bg-gray-100 rounded-md overflow-hidden">
-        <div className="absolute inset-0 flex items-end justify-between p-1">
-          {audioData.map((value, index) => {
-            const isPlayed = currentTime / duration > index / audioData.length;
-            return (
-              <div
-                key={index}
-                className={`w-[0.5%] ${isPlayed ? "bg-blue-500" : "bg-gray-300"}`}
-                style={{
-                  height: `${value * 100}%`,
-                  transition: "background-color 0.3s ease",
-                }}
-              />
-            );
-          })}
-        </div>
-
-        {/* Feedback markers */}
+      {/* Waveform visualization with markers */}
+      <div className="relative h-12 bg-gray-100 rounded-md mb-2 overflow-hidden">
         {feedbackMarkers.map((marker) => {
-          const position = (marker.timestamp / duration) * 100;
+          const startPosition = (marker.timestamp / duration) * 100;
+          const rangeWidth = marker.endTimestamp
+            ? ((marker.endTimestamp - marker.timestamp) / duration) * 100
+            : 0;
+
           return (
             <div
               key={marker.id}
-              className="absolute top-0 w-1 h-full bg-red-500 cursor-pointer group"
-              style={{ left: `${position}%` }}
+              className="absolute top-0 h-full cursor-pointer group"
+              style={{
+                left: `${startPosition}%`,
+                width: marker.endTimestamp ? `${rangeWidth}%` : "2px",
+                backgroundColor: marker.endTimestamp
+                  ? "rgba(220, 38, 38, 0.3)"
+                  : "rgb(220, 38, 38)",
+              }}
               onClick={() => onMarkerClick?.(marker.id)}
-              title={`Feedback at ${formatTime(marker.timestamp)}`}
+              title={
+                marker.endTimestamp
+                  ? `Feedback from ${formatTime(marker.timestamp)} to ${formatTime(marker.endTimestamp)}`
+                  : `Feedback at ${formatTime(marker.timestamp)}`
+              }
             >
-              <div className="absolute top-0 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-xs rounded px-1 py-0.5 whitespace-nowrap">
-                {formatTime(marker.timestamp)}
+              <div className="absolute top-0 -ml-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600 text-white text-xs rounded px-1 py-0.5 whitespace-nowrap z-10">
+                {marker.endTimestamp
+                  ? `${formatTime(marker.timestamp)} - ${formatTime(marker.endTimestamp)}`
+                  : formatTime(marker.timestamp)}
               </div>
-              <div className="absolute top-0 w-3 h-3 bg-red-600 rounded-full -ml-1 -mt-1"></div>
+              <div className="absolute top-0 left-0 w-3 h-3 bg-red-600 rounded-full -ml-1 -mt-1"></div>
+              {marker.endTimestamp && (
+                <div className="absolute top-0 right-0 w-3 h-3 bg-red-600 rounded-full -mr-1 -mt-1"></div>
+              )}
             </div>
           );
         })}
@@ -241,36 +197,18 @@ const AudioPlayer = ({
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
-            size="icon"
-            onClick={toggleMute}
-            className="text-gray-700 hover:text-black"
-          >
-            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-          </Button>
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            min={0}
-            max={1}
-            step={0.01}
-            onValueChange={handleVolumeChange}
-            className="w-24"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
             onClick={skipBackward}
             className="text-gray-700 hover:text-black flex items-center gap-1"
           >
             <SkipBack size={20} />
-            <span className="text-xs">-10s</span>
+            <span className="text-xs hidden md:inline">-10s</span>
           </Button>
 
           <Button
             variant="default"
             size="icon"
             onClick={togglePlayPause}
-            className="bg-black text-white hover:bg-gray-800 rounded-full h-12 w-12 flex items-center justify-center"
+            className="bg-blue-600 text-white hover:bg-blue-700 rounded-full h-12 w-12 flex items-center justify-center"
           >
             {isPlaying ? (
               <Pause size={24} />
@@ -284,11 +222,52 @@ const AudioPlayer = ({
             onClick={skipForward}
             className="text-gray-700 hover:text-black flex items-center gap-1"
           >
-            <span className="text-xs">+10s</span>
+            <span className="text-xs hidden md:inline">+10s</span>
             <SkipForward size={20} />
           </Button>
+
+          {onAddFeedback && (
+            <Button
+              variant="outline"
+              onClick={onAddFeedback}
+              className="ml-2 text-blue-600 border-blue-600 hover:bg-blue-50"
+            >
+              <MessageSquare size={16} className="mr-2" />
+              Add Feedback at Current Time
+            </Button>
+          )}
         </div>
-        <div className="w-[88px]" /> {/* Spacer to balance the layout */}
+
+        {/* Volume control - moved to the right */}
+        <div
+          className="relative md:block"
+          ref={volumeControlRef}
+          onMouseEnter={() => setShowVolumeSlider(true)}
+          onMouseLeave={() => setShowVolumeSlider(false)}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleMute}
+            className="text-gray-700 hover:text-black"
+          >
+            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </Button>
+
+          {/* Volume slider - always visible on large screens, toggleable on small screens */}
+          <div
+            className={`absolute right-0 bottom-full mb-2 p-2 bg-white shadow-lg rounded-md z-10 transition-opacity duration-200 ${showVolumeSlider ? "opacity-100" : "opacity-0 pointer-events-none"} md:opacity-100 md:pointer-events-auto md:static md:shadow-none md:p-0 md:mb-0 md:ml-2 md:inline-flex md:items-center`}
+          >
+            <Slider
+              value={[isMuted ? 0 : volume]}
+              min={0}
+              max={1}
+              step={0.01}
+              onValueChange={handleVolumeChange}
+              className="w-24 md:w-32"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

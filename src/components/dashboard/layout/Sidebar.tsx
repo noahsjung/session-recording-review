@@ -1,154 +1,211 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Link } from "react-router-dom";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 import {
-  Home,
   LayoutDashboard,
-  Calendar,
-  Users,
-  Settings,
-  HelpCircle,
-  FolderKanban,
   Headphones,
   MessageSquare,
-  FileAudio,
-  UserCheck,
+  User,
+  Users,
+  Settings,
   Bell,
-  ChevronLeft,
-  ChevronRight,
+  HelpCircle,
+  LogOut,
+  Moon,
+  Sun,
+  Globe,
 } from "lucide-react";
-
-interface NavItem {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  isActive?: boolean;
-}
+import { useAuth } from "../../../../supabase/auth";
 
 interface SidebarProps {
-  items?: NavItem[];
-  activeItem?: string;
-  onItemClick?: (label: string) => void;
+  activeItem: string;
   isCollapsed: boolean;
   setIsCollapsed: (value: boolean) => void;
 }
 
-const defaultNavItems: NavItem[] = [
-  {
-    icon: <LayoutDashboard size={18} />,
-    label: "Dashboard",
-    href: "/dashboard",
-    isActive: true,
-  },
-  { icon: <Headphones size={18} />, label: "Sessions", href: "/sessions" },
-  { icon: <MessageSquare size={18} />, label: "Feedback", href: "/feedback" },
-  { icon: <UserCheck size={18} />, label: "Supervisors", href: "/supervisors" },
-];
+const Sidebar = ({ activeItem, isCollapsed, setIsCollapsed }: SidebarProps) => {
+  const navigate = useNavigate();
+  const { t, language, setLanguage } = useLanguage();
+  const { theme, setTheme } = useTheme();
+  const { signOut } = useAuth();
 
-const adminNavItems: NavItem[] = [
-  { icon: <Users size={18} />, label: "Admin", href: "/admin" },
-];
+  const defaultItems = [
+    {
+      label: t("dashboard"),
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      href: "/dashboard",
+    },
+    {
+      label: t("sessions"),
+      icon: <Headphones className="h-5 w-5" />,
+      href: "/sessions",
+    },
+    {
+      label: "Feedbacks",
+      icon: <MessageSquare className="h-5 w-5" />,
+      href: "/feedback",
+    },
+    {
+      label: t("supervisors"),
+      icon: <Users className="h-5 w-5" />,
+      href: "/supervisors",
+    },
+    {
+      label: t("notifications"),
+      icon: <Bell className="h-5 w-5" />,
+      href: "/notifications",
+    },
+  ];
 
-const defaultBottomItems: NavItem[] = [
-  { icon: <Bell size={18} />, label: "Notifications", href: "/notifications" },
-  { icon: <Settings size={18} />, label: "Settings", href: "/settings" },
-  { icon: <HelpCircle size={18} />, label: "Help", href: "/help" },
-];
+  const defaultBottomItems = [
+    {
+      label: t("help"),
+      icon: <HelpCircle className="h-5 w-5" />,
+      href: "/help",
+    },
+    {
+      label: t("profile"),
+      icon: <User className="h-5 w-5" />,
+      href: "/profile",
+    },
+    {
+      label: t("logout"),
+      icon: <LogOut className="h-5 w-5" />,
+      href: "/logout",
+    },
+  ];
 
-const Sidebar = ({
-  items = defaultNavItems,
-  activeItem = "Dashboard",
-  onItemClick = () => {},
-  isCollapsed,
-  setIsCollapsed,
-}: SidebarProps) => {
-  // Check if user is admin - in a real app, this would come from auth context
-  const isAdmin = false; // Replace with actual admin check
+  const handleNavigation = (label: string, href: string) => {
+    if (label === t("logout")) {
+      signOut();
+      navigate("/");
+      return;
+    } else {
+      navigate(href);
+      // Close sidebar on small viewports
+      if (window.innerWidth < 768) {
+        setIsCollapsed(true);
+      }
+    }
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const toggleLanguage = () => {
+    setLanguage(language === "en" ? "ko" : "en");
+  };
+
   return (
-    <div
-      className={`${isCollapsed ? "w-0 md:w-[70px]" : "w-[240px]"} h-screen border-r border-gray-200 bg-white flex flex-col fixed left-0 top-16 bottom-0 z-40 transition-all duration-300 ease-in-out ${isCollapsed ? "overflow-hidden" : ""}`}
-    >
-      <ScrollArea className="flex-1 px-3 overflow-y-auto">
-        <div className="space-y-1 mt-4">
-          {items.map((item) => (
-            <Link to={item.href} key={item.label}>
+    <>
+      <div
+        className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-40 ${isCollapsed ? "w-[70px] md:translate-x-0 -translate-x-full" : "w-[240px]"}`}
+      >
+        <div className="p-2"></div>
+
+        <ScrollArea className="h-[calc(100%-3.5rem)]">
+          <div className="space-y-1 p-2">
+            {defaultItems.map((item) => (
               <Button
-                variant={item.label === activeItem ? "secondary" : "ghost"}
-                className={`${isCollapsed ? "justify-center md:flex hidden" : "justify-start"} w-full gap-2 text-sm h-10`}
-                onClick={() => onItemClick(item.label)}
+                key={item.label}
+                variant={activeItem === item.label ? "secondary" : "ghost"}
+                className={`w-full ${isCollapsed ? "justify-center" : "justify-start"} gap-2 text-sm h-10 dark:text-gray-300`}
+                onClick={() => handleNavigation(item.label, item.href)}
               >
                 {item.icon}
                 {!isCollapsed && <span>{item.label}</span>}
               </Button>
-            </Link>
-          ))}
-
-          {isAdmin &&
-            adminNavItems.map((item) => (
-              <Link to={item.href} key={item.label}>
-                <Button
-                  variant={item.label === activeItem ? "secondary" : "ghost"}
-                  className={`${isCollapsed ? "justify-center md:flex hidden" : "justify-start"} w-full gap-2 text-sm h-10`}
-                  onClick={() => onItemClick(item.label)}
-                >
-                  {item.icon}
-                  {!isCollapsed && <span>{item.label}</span>}
-                </Button>
-              </Link>
             ))}
-        </div>
-
-        {!isCollapsed && <Separator className="my-4" />}
-
-        {!isCollapsed && (
-          <div className="space-y-1">
-            <h3 className="text-xs font-medium px-3 py-2 text-gray-500">
-              Session Status
-            </h3>
             <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-sm h-9"
+              variant={activeItem === "Settings" ? "secondary" : "ghost"}
+              className={`w-full ${isCollapsed ? "justify-center" : "justify-start"} gap-2 text-sm h-10 dark:text-gray-300`}
+              onClick={() => handleNavigation(t("settings"), "/settings")}
             >
-              <span className="h-2 w-2 rounded-full bg-green-500"></span>
-              Completed
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-sm h-9"
-            >
-              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-              In Progress
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-sm h-9"
-            >
-              <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
-              Pending Review
+              <Settings className="h-5 w-5" />
+              {!isCollapsed && <span>{t("settings")}</span>}
             </Button>
           </div>
-        )}
-      </ScrollArea>
 
-      <div
-        className={`p-3 mt-auto border-t border-gray-200 ${isCollapsed ? "items-center" : ""}`}
-      >
-        {defaultBottomItems.map((item) => (
-          <Link to={item.href} key={item.label}>
+          {!isCollapsed && (
+            <div className="mt-6 px-3">
+              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                {t("my_sessions")}
+              </h3>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-sm h-9 dark:text-gray-300"
+              >
+                <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                {t("in_progress")}
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-sm h-9 dark:text-gray-300"
+              >
+                <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
+                {t("pending_review")}
+              </Button>
+            </div>
+          )}
+        </ScrollArea>
+
+        <div
+          className={`p-3 mt-auto border-t border-gray-200 dark:border-gray-700 ${isCollapsed ? "items-center" : ""}`}
+        >
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            className={`w-full ${isCollapsed ? "justify-center" : "justify-start"} gap-2 text-sm h-10 mb-1 dark:text-gray-300`}
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-5 w-5" />
+            ) : (
+              <Moon className="h-5 w-5" />
+            )}
+            {!isCollapsed && (
+              <span>{theme === "dark" ? t("light_mode") : t("dark_mode")}</span>
+            )}
+          </Button>
+
+          {/* Language toggle */}
+          <Button
+            variant="ghost"
+            className={`w-full ${isCollapsed ? "justify-center" : "justify-start"} gap-2 text-sm h-10 mb-1 dark:text-gray-300`}
+            onClick={toggleLanguage}
+          >
+            <Globe className="h-5 w-5" />
+            {!isCollapsed && (
+              <span>{language === "en" ? "한국어" : "English"}</span>
+            )}
+          </Button>
+
+          {/* Bottom navigation items */}
+          {defaultBottomItems.map((item) => (
             <Button
+              key={item.label}
               variant="ghost"
-              className={`w-full ${isCollapsed ? "justify-center md:flex hidden" : "justify-start"} gap-2 text-sm h-10 mb-1`}
-              onClick={() => onItemClick(item.label)}
+              className={`w-full ${isCollapsed ? "justify-center" : "justify-start"} gap-2 text-sm h-10 mb-1 dark:text-gray-300`}
+              onClick={() => handleNavigation(item.label, item.href)}
             >
               {item.icon}
               {!isCollapsed && <span>{item.label}</span>}
             </Button>
-          </Link>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+      {/* Overlay to close sidebar on mobile when sidebar is open */}
+      {!isCollapsed && (
+        <div
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+    </>
   );
 };
 

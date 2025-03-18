@@ -82,9 +82,7 @@ const SessionList = ({
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <CardTitle>Your Sessions</CardTitle>
-      </CardHeader>
+      <CardHeader>{/* Title removed as requested */}</CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px] pr-4">
           {sessions.length === 0 ? (

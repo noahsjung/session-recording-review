@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
+import { useSidebar } from "@/context/SidebarContext";
 import TopNavigation from "../dashboard/layout/TopNavigation";
 import Sidebar from "../dashboard/layout/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,7 +152,7 @@ const getStatusText = (status: string) => {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, setIsCollapsed } = useSidebar();
 
   return (
     <div className="min-h-screen bg-white">
@@ -165,7 +166,11 @@ const Dashboard = () => {
           className={isCollapsed ? "w-[70px]" : "w-[240px]"}
           aria-hidden="true"
         ></div>
-        <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <Sidebar
+          activeItem="Dashboard"
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+        />
 
         <main className="flex-1 overflow-auto p-4 md:p-6 transition-all duration-300">
           <div className="mb-6">
@@ -246,7 +251,9 @@ const Dashboard = () => {
             {/* Recent Sessions */}
             <Card className="border border-gray-200 shadow-sm">
               <CardHeader className="flex justify-between items-center">
-                <CardTitle>Recent Sessions</CardTitle>
+                <div className="flex-1">
+                  <CardTitle>Recent Sessions</CardTitle>
+                </div>
                 <Link to="/sessions">
                   <Button variant="outline" size="sm" className="gap-1">
                     <Plus size={16} />

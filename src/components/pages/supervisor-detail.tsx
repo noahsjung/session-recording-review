@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSidebar } from "@/context/SidebarContext";
 import { useParams, useNavigate } from "react-router-dom";
 import TopNavigation from "../dashboard/layout/TopNavigation";
 import Sidebar from "../dashboard/layout/Sidebar";
@@ -26,7 +27,7 @@ const SupervisorDetailPage = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, setIsCollapsed } = useSidebar();
 
   useEffect(() => {
     const fetchSupervisor = async () => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSidebar } from "@/context/SidebarContext";
 import { useLocation } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -161,7 +162,7 @@ const mockFeedback = [
 const SessionsPage = () => {
   const [activeTab, setActiveTab] = useState("view");
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isCollapsed, setIsCollapsed } = useSidebar();
 
   // Check if we should show upload mode from location state
   useEffect(() => {
@@ -197,6 +198,7 @@ const SessionsPage = () => {
     title: string;
     notes: string;
     supervisorId: string;
+    sessionType?: string;
   }) => {
     // In a real implementation, you would upload the file to a storage service
     // and create a new session in the database
@@ -212,6 +214,7 @@ const SessionsPage = () => {
       duration: Math.floor(Math.random() * 3000) + 1200, // Random duration between 20-70 minutes
       feedbackCount: 0,
       status: "pending",
+      sessionType: data.sessionType || "General",
       supervisor: {
         id: data.supervisorId,
         name:
@@ -230,36 +233,51 @@ const SessionsPage = () => {
     setActiveTab("view");
   };
 
-  const handleAddFeedback = (text: string, timestamp: number) => {
+  const handleAddFeedback = async (
+    title: string,
+    text: string,
+    timestamp: number,
+    endTimestamp?: number,
+    audioBlob?: Blob,
+  ) => {
     if (!selectedSessionId) return;
 
-    // In a real implementation, you would save the feedback to the database
-    const newFeedback = {
-      id: `f${mockFeedback.length + 1}`,
-      sessionId: selectedSessionId,
-      timestamp,
-      text,
-      author: {
-        name: "Dr. Sarah Johnson", // This would be the current user in a real app
-        avatar: "sarah",
-      },
-      createdAt: new Date(),
-    };
+    try {
+      // Mock implementation for now - in a real app this would call the API
+      const newFeedback = {
+        id: `f${mockFeedback.length + 1}`,
+        sessionId: selectedSessionId,
+        timestamp,
+        text,
+        author: {
+          name: "Current User",
+          avatar: "user",
+        },
+        createdAt: new Date(),
+      };
 
-    // Update the session's feedback count
-    setSessions(
-      sessions.map((session) =>
-        session.id === selectedSessionId
-          ? { ...session, feedbackCount: session.feedbackCount + 1 }
-          : session,
-      ),
-    );
+      // Update the session's feedback count locally
+      setSessions(
+        sessions.map((session) =>
+          session.id === selectedSessionId
+            ? { ...session, feedbackCount: session.feedbackCount + 1 }
+            : session,
+        ),
+      );
 
-    toast({
-      title: "Feedback added",
-      description: "Your feedback has been added to the session.",
-      variant: "default",
-    });
+      toast({
+        title: "Feedback added",
+        description: "Your feedback has been added to the session.",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error adding feedback:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add feedback. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAddAudioResponse = (audioBlob: Blob, feedbackId: string) => {
@@ -285,13 +303,15 @@ const SessionsPage = () => {
           className={isCollapsed ? "w-[70px]" : "w-[240px]"}
           aria-hidden="true"
         ></div>
-        <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <Sidebar
+          activeItem="Sessions"
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+        />
 
         <main className="flex-1 overflow-auto p-6 transition-all duration-300">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">
-              Session Feedback
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800">Sessions</h1>
             <p className="text-gray-600">
               Upload session recordings and receive feedback from your
               supervisors.
@@ -309,19 +329,19 @@ const SessionsPage = () => {
             />
           ) : (
             <div className="w-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Your Sessions</h2>
-                <Button onClick={() => setActiveTab("upload")}>
-                  <Plus size={16} className="mr-2" /> New Session
-                </Button>
-              </div>
-
               {activeTab === "view" ? (
-                <SessionList
-                  sessions={sessions}
-                  onSelectSession={setSelectedSessionId}
-                  selectedSessionId={selectedSessionId || undefined}
-                />
+                <>
+                  <div className="flex justify-start mb-4">
+                    <Button onClick={() => setActiveTab("upload")}>
+                      <Plus size={16} className="mr-2" /> New Session
+                    </Button>
+                  </div>
+                  <SessionList
+                    sessions={sessions}
+                    onSelectSession={setSelectedSessionId}
+                    selectedSessionId={selectedSessionId || undefined}
+                  />
+                </>
               ) : (
                 <SessionUploader
                   supervisors={supervisors}
