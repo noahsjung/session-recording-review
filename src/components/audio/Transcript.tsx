@@ -377,8 +377,8 @@ const Transcript = ({
         <div
           ref={topHandleRef}
           className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-4 bg-blue-300 opacity-30 rounded-t-md z-10"
-          style={{ cursor: "row-resize" }}
           style={{
+            cursor: "row-resize",
             top:
               document
                 .getElementById(`segment-${firstSelectedSegment.id}`)
@@ -397,8 +397,8 @@ const Transcript = ({
         <div
           ref={bottomHandleRef}
           className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-16 h-4 bg-blue-300 opacity-30 rounded-b-md z-10"
-          style={{ cursor: "row-resize" }}
           style={{
+            cursor: "row-resize",
             bottom:
               document
                 .getElementById(`segment-${lastSelectedSegment.id}`)

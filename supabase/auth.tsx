@@ -18,7 +18,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   isAdmin: () => boolean;
   isSupervisor: () => boolean;
-  isApprovedSupervisor: () => boolean;
+  isApprovedSupervisor: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -96,15 +96,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
-  const isAdmin = () => {
-    return user?.user_metadata?.role === "admin";
+  const isAdmin = (): boolean => {
+    return user?.user_metadata?.role === "admin" || false;
   };
 
-  const isSupervisor = () => {
-    return user?.user_metadata?.role === "supervisor";
+  const isSupervisor = (): boolean => {
+    return user?.user_metadata?.role === "supervisor" || false;
   };
 
-  const isApprovedSupervisor = async () => {
+  const isApprovedSupervisor = async (): Promise<boolean> => {
     if (!isSupervisor() || !user) return false;
 
     const { data, error } = await supabase

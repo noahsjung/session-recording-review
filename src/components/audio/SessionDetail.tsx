@@ -650,7 +650,7 @@ const SessionDetail = ({
             <h2 className="text-xl font-semibold">{session.title}</h2>
             <div className="flex items-center text-sm text-gray-500 mt-1">
               <Calendar className="h-4 w-4 mr-1" />
-              <span className="mr-3">{formatDate(session.date)}</span>
+              <span className="mr-3">{formatDate(session.createdAt)}</span>
               <Clock className="h-4 w-4 mr-1" />
               <span>{formatDuration(duration)}</span>
             </div>
