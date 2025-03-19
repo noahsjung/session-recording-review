@@ -40,14 +40,15 @@ const createMockClient = () => {
   return mockMethods;
 };
 
-// Create the actual Supabase client
+// Create the actual Supabase client - use a singleton pattern with a unique storage key
 let realSupabase: any;
 try {
   realSupabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      storageKey: 'session-recording-review-storage-key' // Add unique storage key
     }
   });
   console.log("Supabase client created successfully");
