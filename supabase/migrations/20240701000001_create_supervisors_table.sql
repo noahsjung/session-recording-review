@@ -15,13 +15,13 @@ CREATE TABLE IF NOT EXISTS supervisors (
 ALTER TABLE supervisors ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for supervisors
-DROP POLICY IF EXISTS "Public read access for supervisors";
+DROP POLICY IF EXISTS "Public read access for supervisors" ON supervisors;
 CREATE POLICY "Public read access for supervisors"
   ON supervisors FOR SELECT
   USING (true);
 
 -- Enable realtime
-alter publication supabase_realtime add table supervisors;
+ALTER PUBLICATION supabase_realtime ADD TABLE supervisors;
 
 -- Insert sample data
 INSERT INTO supervisors (name, avatar, level, experience, background, introduction)

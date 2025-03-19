@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS feedback (
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for feedback
-DROP POLICY IF EXISTS "Users can view feedback on their sessions";
+DROP POLICY IF EXISTS "Users can view feedback on their sessions" ON feedback;
 CREATE POLICY "Users can view feedback on their sessions"
   ON feedback FOR SELECT
   USING (
@@ -23,15 +23,15 @@ CREATE POLICY "Users can view feedback on their sessions"
     )
   );
 
-DROP POLICY IF EXISTS "Users can insert feedback";
+DROP POLICY IF EXISTS "Users can insert feedback" ON feedback;
 CREATE POLICY "Users can insert feedback"
   ON feedback FOR INSERT
   WITH CHECK (author_id = auth.uid());
 
-DROP POLICY IF EXISTS "Users can update their own feedback";
+DROP POLICY IF EXISTS "Users can update their own feedback" ON feedback;
 CREATE POLICY "Users can update their own feedback"
   ON feedback FOR UPDATE
   USING (author_id = auth.uid());
 
 -- Enable realtime
-alter publication supabase_realtime add table feedback;
+ALTER PUBLICATION supabase_realtime ADD TABLE feedback;

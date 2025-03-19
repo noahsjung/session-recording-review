@@ -1,3 +1,17 @@
+-- Add role_id column to auth.users if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'auth' 
+        AND table_name = 'users' 
+        AND column_name = 'role_id'
+    ) THEN
+        ALTER TABLE auth.users ADD COLUMN role_id UUID;
+    END IF;
+END
+$$;
+
 -- Create admin user
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin, role_id)
 VALUES 
@@ -39,6 +53,81 @@ VALUES
 ('00000000-0000-0000-0000-000000000005', 'John Doe', 'counselor', true, now()),
 ('00000000-0000-0000-0000-000000000006', 'Jane Smith', 'counselor', true, now())
 ON CONFLICT (id) DO NOTHING;
+
+-- Add additional columns to supervisors table if they don't exist
+DO $$
+BEGIN
+    -- Add title column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'supervisors' 
+        AND column_name = 'title'
+    ) THEN
+        ALTER TABLE public.supervisors ADD COLUMN title TEXT;
+    END IF;
+
+    -- Add specialization column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'supervisors' 
+        AND column_name = 'specialization'
+    ) THEN
+        ALTER TABLE public.supervisors ADD COLUMN specialization TEXT;
+    END IF;
+
+    -- Add years_of_experience column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'supervisors' 
+        AND column_name = 'years_of_experience'
+    ) THEN
+        ALTER TABLE public.supervisors ADD COLUMN years_of_experience INTEGER;
+    END IF;
+
+    -- Add certifications column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'supervisors' 
+        AND column_name = 'certifications'
+    ) THEN
+        ALTER TABLE public.supervisors ADD COLUMN certifications TEXT[];
+    END IF;
+
+    -- Add availability column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'supervisors' 
+        AND column_name = 'availability'
+    ) THEN
+        ALTER TABLE public.supervisors ADD COLUMN availability TEXT;
+    END IF;
+
+    -- Add bio column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'supervisors' 
+        AND column_name = 'bio'
+    ) THEN
+        ALTER TABLE public.supervisors ADD COLUMN bio TEXT;
+    END IF;
+
+    -- Add status column if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+        AND table_name = 'supervisors' 
+        AND column_name = 'status'
+    ) THEN
+        ALTER TABLE public.supervisors ADD COLUMN status TEXT;
+    END IF;
+END
+$$;
 
 -- Create supervisor records
 INSERT INTO public.supervisors (id, name, avatar, level, experience, background, introduction, title, specialization, years_of_experience, certifications, availability, bio, status)

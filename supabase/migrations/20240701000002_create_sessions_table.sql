@@ -17,22 +17,22 @@ CREATE TABLE IF NOT EXISTS sessions (
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for sessions
-DROP POLICY IF EXISTS "Users can view their own sessions";
+DROP POLICY IF EXISTS "Users can view their own sessions" ON sessions;
 CREATE POLICY "Users can view their own sessions"
   ON sessions FOR SELECT
   USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can insert their own sessions";
+DROP POLICY IF EXISTS "Users can insert their own sessions" ON sessions;
 CREATE POLICY "Users can insert their own sessions"
   ON sessions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can update their own sessions";
+DROP POLICY IF EXISTS "Users can update their own sessions" ON sessions;
 CREATE POLICY "Users can update their own sessions"
   ON sessions FOR UPDATE
   USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Supervisors can view assigned sessions";
+DROP POLICY IF EXISTS "Supervisors can view assigned sessions" ON sessions;
 CREATE POLICY "Supervisors can view assigned sessions"
   ON sessions FOR SELECT
   USING (supervisor_id IN (
@@ -40,4 +40,4 @@ CREATE POLICY "Supervisors can view assigned sessions"
   ));
 
 -- Enable realtime
-alter publication supabase_realtime add table sessions;
+ALTER PUBLICATION supabase_realtime ADD TABLE sessions;

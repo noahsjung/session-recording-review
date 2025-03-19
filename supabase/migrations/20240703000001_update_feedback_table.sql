@@ -46,5 +46,16 @@ CREATE POLICY "Users can delete their own feedback"
   FOR DELETE
   USING (author_id = auth.uid());
 
--- Add to realtime publication
-ALTER PUBLICATION supabase_realtime ADD TABLE feedback;
+-- Add to realtime publication only if not already added
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND schemaname = 'public' 
+    AND tablename = 'feedback'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE feedback';
+  END IF;
+END
+$$;
