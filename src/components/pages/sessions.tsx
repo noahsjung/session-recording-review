@@ -310,18 +310,20 @@ const SessionsPage = () => {
         />
 
         <main className="flex-1 overflow-auto p-6 transition-all duration-300">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Sessions</h1>
-            <p className="text-gray-600">
-              Upload session recordings and receive feedback from your
-              supervisors.
-            </p>
-          </div>
+          {!selectedSession && (
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-800">Sessions</h1>
+              <p className="text-gray-600">
+                Upload session recordings and receive feedback from your
+                supervisors.
+              </p>
+            </div>
+          )}
 
           {selectedSession ? (
             <SessionDetail
               session={selectedSession}
-              audioUrl="https://example.com/audio-sample.mp3" // This would be the actual audio URL in a real app
+              audioUrl="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" // Using a reliable audio sample source
               feedback={sessionFeedback}
               onBack={() => setSelectedSessionId(null)}
               onAddFeedback={handleAddFeedback}

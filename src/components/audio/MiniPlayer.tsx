@@ -34,9 +34,10 @@ const MiniPlayer = ({
   return (
     <div
       className={cn(
-        "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-50 flex items-center space-x-2 shadow-lg",
+        "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 z-50 flex items-center space-x-2 shadow-lg w-[calc(100%-var(--sidebar-width,0px))]",
         className,
       )}
+      style={{ marginLeft: "var(--sidebar-width, 0px)" }}
     >
       <Button
         variant="ghost"

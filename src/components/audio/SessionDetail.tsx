@@ -332,7 +332,8 @@ const SessionDetail = ({
     }
   }, [selectedFeedbackId, specificFeedback, transcriptSegments]);
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date?: Date) => {
+    if (!date) return "No date available";
     return date.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
@@ -348,7 +349,9 @@ const SessionDetail = ({
   };
 
   const formatTimestamp = (seconds: number) => {
-    return formatDuration(seconds);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
   };
 
   const getStatusColor = (status: Session["status"]) => {
@@ -463,33 +466,20 @@ const SessionDetail = ({
     if (audio) {
       const handleTimeUpdate = () => {
         setCurrentTimestamp(audio.currentTime);
-      };
-
-      const handleDurationChange = () => {
         setDuration(audio.duration);
       };
 
-      const handlePlay = () => {
-        setIsPlaying(true);
-      };
-
-      const handlePause = () => {
-        setIsPlaying(false);
-      };
-
-      const handleEnded = () => {
-        setIsPlaying(false);
-      };
+      const handlePlay = () => setIsPlaying(true);
+      const handlePause = () => setIsPlaying(false);
+      const handleEnded = () => setIsPlaying(false);
 
       audio.addEventListener("timeupdate", handleTimeUpdate);
-      audio.addEventListener("durationchange", handleDurationChange);
       audio.addEventListener("play", handlePlay);
       audio.addEventListener("pause", handlePause);
       audio.addEventListener("ended", handleEnded);
 
       return () => {
         audio.removeEventListener("timeupdate", handleTimeUpdate);
-        audio.removeEventListener("durationchange", handleDurationChange);
         audio.removeEventListener("play", handlePlay);
         audio.removeEventListener("pause", handlePause);
         audio.removeEventListener("ended", handleEnded);
@@ -500,14 +490,86 @@ const SessionDetail = ({
   // Handle transcript selection
   const handleTranscriptSelection = (selection: TranscriptSelection | null) => {
     setTranscriptSelection(selection);
-    // Don't automatically show feedback form - it will be triggered by button click
-    if (!selection) {
+    if (selection) {
+      setFeedbackTitle("");
+      setFeedbackText(selection.text);
+      setShowFeedbackForm(true);
+    } else {
       setShowFeedbackForm(false);
     }
   };
 
+  // Handle feedback form submission
+  const handleFeedbackSubmit = () => {
+    if (onAddFeedback) {
+      if (transcriptSelection) {
+        onAddFeedback(
+          feedbackTitle || "Feedback on transcript",
+          feedbackText,
+          transcriptSelection.startTime,
+          transcriptSelection.endTime,
+          undefined,
+          false,
+        );
+      } else if (showGeneralCommentForm) {
+        onAddFeedback(
+          "General Comment",
+          generalComment,
+          0,
+          undefined,
+          undefined,
+          true,
+        );
+      }
+    }
+    setShowFeedbackForm(false);
+    setShowGeneralCommentForm(false);
+    setTranscriptSelection(null);
+    setFeedbackTitle("");
+    setFeedbackText("");
+    setGeneralComment("");
+  };
+
+  // Handle feedback on a specific segment
+  const handleFeedbackOnSegment = (segmentId: string) => {
+    const segment = transcriptSegments.find((seg) => seg.id === segmentId);
+    if (segment) {
+      setTranscriptSelection({
+        startId: segment.id,
+        endId: segment.id,
+        startTime: segment.start,
+        endTime: segment.end,
+        text: segment.text,
+      });
+      setFeedbackTitle("");
+      setFeedbackText("");
+      setShowFeedbackForm(true);
+    }
+  };
+
+  // Handle like on a segment
+  const handleLikeSegment = (segmentId: string) => {
+    const segment = transcriptSegments.find((seg) => seg.id === segmentId);
+    if (segment && onAddFeedback) {
+      onAddFeedback(
+        "Liked",
+        "👍 This part was well done.",
+        segment.start,
+        undefined,
+        undefined,
+        false,
+      );
+
+      // Add to liked segments immediately for UI feedback
+      setLikedSegments((prev) => {
+        if (prev.includes(segmentId)) return prev;
+        return [...prev, segmentId];
+      });
+    }
+  };
+
   // Start recording audio feedback
-  const startRecordingFeedback = useCallback(async () => {
+  const startRecordingFeedback = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -532,10 +594,10 @@ const SessionDetail = ({
     } catch (error) {
       console.error("Error starting recording:", error);
     }
-  }, []);
+  };
 
   // Stop recording audio feedback
-  const stopRecordingFeedback = useCallback(() => {
+  const stopRecordingFeedback = () => {
     if (
       mediaRecorderRef.current &&
       mediaRecorderRef.current.state !== "inactive"
@@ -546,517 +608,344 @@ const SessionDetail = ({
         .forEach((track) => track.stop());
       setIsRecordingFeedback(false);
     }
-  }, []);
+  };
 
   // Play recorded audio feedback
-  const playFeedbackAudio = useCallback(() => {
+  const playFeedbackAudio = () => {
     if (audioFeedbackBlob) {
       const audioUrl = URL.createObjectURL(audioFeedbackBlob);
       const audio = new Audio(audioUrl);
       audio.onended = () => setIsFeedbackAudioPlaying(false);
-      audio.onpause = () => setIsFeedbackAudioPlaying(false);
-      audio.onerror = () => setIsFeedbackAudioPlaying(false);
-      audio.play().catch((err) => {
-        console.error("Error playing audio:", err);
-        setIsFeedbackAudioPlaying(false);
-      });
+      audio.play();
       setIsFeedbackAudioPlaying(true);
     }
-  }, [audioFeedbackBlob]);
+  };
 
-  // Clear recorded audio feedback
-  const clearFeedbackAudio = useCallback(() => {
-    setAudioFeedbackBlob(null);
-  }, []);
-
-  // Handle adding feedback for transcript selection
-  const handleAddFeedbackForSelection = () => {
-    if (transcriptSelection && onAddFeedback) {
+  // Submit audio feedback
+  const submitAudioFeedback = () => {
+    if (onAddFeedback && audioFeedbackBlob && transcriptSelection) {
       onAddFeedback(
-        feedbackTitle,
-        feedbackMode === "text" ? feedbackText : "Audio feedback provided",
+        feedbackTitle || "Audio Feedback",
+        "",
         transcriptSelection.startTime,
         transcriptSelection.endTime,
-        feedbackMode === "audio" ? audioFeedbackBlob : undefined,
+        audioFeedbackBlob,
+        false,
       );
-      setFeedbackTitle("");
-      setFeedbackText("");
       setAudioFeedbackBlob(null);
       setShowFeedbackForm(false);
       setTranscriptSelection(null);
     }
   };
 
-  // Handle adding general comment
-  const handleAddGeneralComment = () => {
-    if (onAddFeedback && generalComment.trim()) {
-      onAddFeedback(
-        "General Comment",
-        generalComment,
-        0, // No specific timestamp
-        undefined,
-        undefined,
-        undefined,
-        true, // Mark as general comment
-      );
-      setGeneralComment("");
-      setShowGeneralCommentForm(false);
-    }
-  };
-
-  // Create feedback markers for the audio player
-  const feedbackMarkers = specificFeedback.map((item) => ({
-    timestamp: item.timestamp,
-    endTimestamp: item.endTimestamp,
-    id: item.id,
-  }));
-
   return (
-    <div className={`space-y-6 ${className}`}>
-      <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className="flex items-center text-gray-600 dark:text-gray-300"
-        >
-          <ArrowLeft size={16} className="mr-2" /> Back to Sessions
-        </Button>
+    <div className={`flex flex-col h-full ${className}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" onClick={onBack} className="mr-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-semibold">{session.title}</h2>
+            <div className="flex items-center text-sm text-gray-500 mt-1">
+              <Calendar className="h-4 w-4 mr-1" />
+              <span className="mr-3">{formatDate(session.date)}</span>
+              <Clock className="h-4 w-4 mr-1" />
+              <span>{formatDuration(duration)}</span>
+            </div>
+          </div>
+        </div>
         <Badge className={getStatusColor(session.status)}>
           {getStatusText(session.status)}
         </Badge>
       </div>
-      <div
-        ref={fullPlayerRef}
-        className="bg-white dark:bg-gray-900 pb-4 shadow-md"
-      >
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-2xl dark:text-white">
-                  {session.title}
-                </CardTitle>
-                <CardDescription className="mt-2 flex flex-wrap items-center gap-4 dark:text-gray-300">
-                  <span className="flex items-center">
-                    <Calendar size={14} className="mr-1" />
-                    Date: {formatDate(session.createdAt)}
-                  </span>
-                  <span className="flex items-center">
-                    <Clock size={14} className="mr-1" />
-                    Duration: {formatDuration(session.duration)}
-                  </span>
-                  <span className="flex items-center">
-                    <MessageSquare size={14} className="mr-1" />
-                    {feedback.length} comments
-                  </span>
-                  {session.sessionType && (
-                    <span className="flex items-center">
-                      Type: {session.sessionType}
-                    </span>
-                  )}
-                </CardDescription>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="text-sm text-right dark:text-gray-300">
-                  <p className="font-medium">Supervisor Reviewed By</p>
-                  <p>{session.supervisor.name}</p>
-                </div>
-                <Avatar>
-                  <AvatarImage
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${session.supervisor.avatar}`}
-                    alt={session.supervisor.name}
-                  />
-                  <AvatarFallback>{session.supervisor.name[0]}</AvatarFallback>
-                </Avatar>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
+
+      {/* Main content */}
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        {/* Left panel - Audio player and transcript */}
+        <div className="md:w-2/3 flex flex-col overflow-hidden">
+          {/* Audio player */}
+          <div ref={fullPlayerRef} className="p-4">
             <AudioPlayer
               src={audioUrl}
-              feedbackMarkers={feedbackMarkers}
+              feedbackMarkers={specificFeedback.map((item) => ({
+                id: item.id,
+                timestamp: item.timestamp,
+                endTimestamp: item.endTimestamp,
+              }))}
               onMarkerClick={handleMarkerClick}
               onTimeUpdate={setCurrentTimestamp}
-              onAddFeedback={() => {
-                setShowFeedbackForm(true);
-                setTranscriptSelection({
-                  startId: "",
-                  endId: "",
-                  startTime: currentTimestamp,
-                  endTime: currentTimestamp,
-                  text: "",
-                });
-              }}
             />
-          </CardContent>
-        </Card>
-      </div>
-      {/* General Comments Section - Simplified */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700 mt-6">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">General Comments</CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowGeneralCommentForm(!showGeneralCommentForm)}
-            className="flex items-center gap-1"
-          >
-            <Plus size={16} />
-            Add Comment
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {showGeneralCommentForm && (
-            <div className="mb-4 p-4 border rounded-md bg-gray-50">
-              <Textarea
-                placeholder="Add a general comment about the entire session..."
-                className="mb-2"
-                value={generalComment}
-                onChange={(e) => setGeneralComment(e.target.value)}
-              />
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowGeneralCommentForm(false);
-                    setGeneralComment("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleAddGeneralComment}
-                  disabled={!generalComment.trim()}
-                >
-                  Save Comment
-                </Button>
-              </div>
-            </div>
-          )}
+          </div>
 
-          {generalFeedback.length === 0 ? (
-            <div className="text-center py-6 text-gray-500">
-              <p>No general comments yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {generalFeedback.map((item) => (
-                <div key={item.id} className="p-4 border rounded-md bg-gray-50">
-                  <div className="flex items-start gap-3 mb-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${item.author.avatar}`}
-                        alt={item.author.name}
-                      />
-                      <AvatarFallback>{item.author.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{item.author.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {item.createdAt.toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-gray-700">{item.text}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      {/* Flexible layout for Transcript and Feedback */}
-      <div className="flex w-full relative">
-        {/* Transcript section */}
+          {/* Transcript */}
+          <div className="flex-1 overflow-hidden">
+            <Transcript
+              segments={transcriptSegments}
+              currentTime={currentTimestamp}
+              highlightedSegmentIds={highlightedSegmentIds}
+              onSegmentClick={handleSegmentClick}
+              onSelectionChange={handleTranscriptSelection}
+              onFeedbackClick={handleFeedbackOnSegment}
+              onLikeClick={handleLikeSegment}
+              isPlaying={isPlaying}
+              feedbackItems={feedbackToSegmentMap}
+              likedSegments={likedSegments}
+              className="h-full"
+            />
+          </div>
+        </div>
+
+        {/* Right panel - Feedback */}
         <div
-          className={`${isFeedbackPanelMinimized ? "w-full" : "w-3/4"} transition-all duration-300`}
+          className={`md:w-1/3 border-l transition-all duration-300 ${isFeedbackPanelMinimized ? "md:w-12" : ""}`}
         >
-          <Transcript
-            segments={transcriptSegments}
-            currentTime={currentTimestamp}
-            highlightedSegmentIds={highlightedSegmentIds}
-            onSegmentClick={handleSegmentClick}
-            onSelectionChange={handleTranscriptSelection}
-            className="h-full"
-            isPlaying={isPlaying}
-            feedbackItems={feedbackToSegmentMap}
-            likedSegments={likedSegments}
-            onFeedbackClick={(segmentId) => {
-              const segment = transcriptSegments.find(
-                (seg) => seg.id === segmentId,
-              );
-              if (segment) {
-                setShowFeedbackForm(true);
-                setTranscriptSelection({
-                  startId: segmentId,
-                  endId: segmentId,
-                  startTime: segment.start,
-                  endTime: segment.end,
-                  text: segment.text,
-                });
-              }
-            }}
-            onLikeClick={(segmentId) => {
-              // Handle like functionality
-              const segment = transcriptSegments.find(
-                (seg) => seg.id === segmentId,
-              );
-              if (segment && onAddFeedback) {
-                onAddFeedback(
-                  "Liked segment",
-                  "👍 This segment was helpful",
-                  segment.start,
-                  segment.end,
-                );
-                // Add to liked segments immediately for UI feedback
-                setLikedSegments([...likedSegments, segmentId]);
-                console.log(`Liked segment ${segmentId}`);
-              }
-            }}
-          />
-        </div>
+          {isFeedbackPanelMinimized ? (
+            <Button
+              variant="ghost"
+              className="w-full h-12 flex justify-center items-center"
+              onClick={() => setIsFeedbackPanelMinimized(false)}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          ) : (
+            <div className="flex flex-col h-full">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h3 className="font-medium">Session Feedback</h3>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowGeneralCommentForm(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add General Comment
+                  </Button>
+                  {session.status !== "completed" && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        // In a real app, this would call an API to update the session status
+                        // For now, we'll just show a toast message
+                        alert(
+                          "Review completed! Notification sent to counselor.",
+                        );
+                      }}
+                    >
+                      Complete Review
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsFeedbackPanelMinimized(true)}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
 
-        {/* Toggle button for feedback panel - sticky on right side */}
-        <div className="sticky top-20 right-0 h-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 h-12 w-6 p-0 bg-gray-200 hover:bg-gray-300 rounded-r-md rounded-l-none shadow-md"
-            onClick={() =>
-              setIsFeedbackPanelMinimized(!isFeedbackPanelMinimized)
-            }
-          >
-            {isFeedbackPanelMinimized ? (
-              <ChevronLeft size={16} />
-            ) : (
-              <ChevronRight size={16} />
-            )}
-          </Button>
-        </div>
+              {/* Feedback content */}
+              <div className="flex-1 overflow-hidden">
+                {showFeedbackForm ? (
+                  <div className="p-4 space-y-4">
+                    <h3 className="font-medium">
+                      {transcriptSelection
+                        ? "Add Feedback for Selected Text"
+                        : "Add Feedback"}
+                    </h3>
 
-        {/* Feedback panel - simplified, only shows list of feedback */}
-        {!isFeedbackPanelMinimized && (
-          <div className="w-1/4 pl-4 transition-all duration-300">
-            <div className="bg-white rounded-lg shadow-md p-4 h-full">
-              <h3 className="text-lg font-medium mb-4">Feedback List</h3>
-              <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
-                {specificFeedback.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                    <p>No feedback yet for this session.</p>
-                    <p className="text-sm mt-1">
-                      Select text in the transcript to add feedback.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {specificFeedback.map((item) => (
-                      <div
-                        key={item.id}
-                        className="bg-gray-50 rounded-lg p-3 text-sm"
+                    {/* Feedback mode toggle */}
+                    <div className="flex space-x-4">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          checked={feedbackMode === "text"}
+                          onChange={() => setFeedbackMode("text")}
+                          className="h-4 w-4"
+                        />
+                        <span>Text Feedback</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          checked={feedbackMode === "audio"}
+                          onChange={() => setFeedbackMode("audio")}
+                          className="h-4 w-4"
+                        />
+                        <span>Audio Feedback</span>
+                      </label>
+                    </div>
+
+                    {/* Selected text display */}
+                    {transcriptSelection && (
+                      <div className="bg-blue-50 p-3 rounded-md">
+                        <p className="text-sm text-gray-600 mb-1">
+                          Selected text (
+                          {formatTimestamp(transcriptSelection.startTime)} -{" "}
+                          {formatTimestamp(transcriptSelection.endTime)}):
+                        </p>
+                        <p className="text-sm">"{transcriptSelection.text}"</p>
+                      </div>
+                    )}
+
+                    {/* Feedback title */}
+                    <div>
+                      <label
+                        htmlFor="feedback-title"
+                        className="block text-sm font-medium mb-1"
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
-                            <img
-                              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${item.author.avatar}`}
-                              alt={item.author.name}
-                              className="w-full h-full"
+                        Feedback Title (Optional)
+                      </label>
+                      <Input
+                        id="feedback-title"
+                        value={feedbackTitle}
+                        onChange={(e) => setFeedbackTitle(e.target.value)}
+                        placeholder="Enter a title for your feedback"
+                      />
+                    </div>
+
+                    {/* Text feedback */}
+                    {feedbackMode === "text" && (
+                      <div>
+                        <label
+                          htmlFor="feedback-text"
+                          className="block text-sm font-medium mb-1"
+                        >
+                          Feedback
+                        </label>
+                        <Textarea
+                          id="feedback-text"
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          placeholder="Enter your feedback here"
+                          rows={5}
+                        />
+                      </div>
+                    )}
+
+                    {/* Audio feedback */}
+                    {feedbackMode === "audio" && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium">
+                          Audio Feedback
+                        </label>
+                        {!audioFeedbackBlob ? (
+                          <Button
+                            variant={
+                              isRecordingFeedback ? "destructive" : "outline"
+                            }
+                            onClick={
+                              isRecordingFeedback
+                                ? stopRecordingFeedback
+                                : startRecordingFeedback
+                            }
+                            className="w-full flex items-center justify-center"
+                          >
+                            <Mic
+                              className={`h-4 w-4 mr-2 ${isRecordingFeedback ? "animate-pulse" : ""}`}
                             />
-                          </div>
-                          <span className="font-medium text-xs">
-                            {item.author.name}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-auto">
-                            {formatTimestamp(item.timestamp)}
-                          </span>
-                        </div>
-                        {item.title && (
-                          <p className="font-medium text-xs">{item.title}</p>
-                        )}
-                        <p className="text-gray-700">{item.text}</p>
-                        {item.audioFeedback && (
-                          <div className="mt-1 flex items-center gap-1 text-xs text-blue-600">
-                            <Play size={12} />
-                            <span>Audio feedback available</span>
+                            {isRecordingFeedback
+                              ? "Stop Recording"
+                              : "Start Recording"}
+                          </Button>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={playFeedbackAudio}
+                              className="flex-1 flex items-center justify-center"
+                            >
+                              {isFeedbackAudioPlaying ? (
+                                <Pause className="h-4 w-4 mr-2" />
+                              ) : (
+                                <Play className="h-4 w-4 mr-2" />
+                              )}
+                              {isFeedbackAudioPlaying ? "Playing..." : "Play"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setAudioFeedbackBlob(null)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
                         )}
                       </div>
-                    ))}
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex justify-end space-x-2 pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowFeedbackForm(false);
+                          setTranscriptSelection(null);
+                          setAudioFeedbackBlob(null);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={
+                          feedbackMode === "audio" && audioFeedbackBlob
+                            ? submitAudioFeedback
+                            : handleFeedbackSubmit
+                        }
+                        disabled={
+                          (feedbackMode === "text" && !feedbackText.trim()) ||
+                          (feedbackMode === "audio" && !audioFeedbackBlob)
+                        }
+                      >
+                        Submit Feedback
+                      </Button>
+                    </div>
                   </div>
+                ) : showGeneralCommentForm ? (
+                  <div className="p-4 space-y-4">
+                    <h3 className="font-medium">Add General Comment</h3>
+                    <Textarea
+                      value={generalComment}
+                      onChange={(e) => setGeneralComment(e.target.value)}
+                      placeholder="Enter a general comment about the session"
+                      rows={5}
+                    />
+                    <div className="flex justify-end space-x-2 pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowGeneralCommentForm(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleFeedbackSubmit}
+                        disabled={!generalComment.trim()}
+                      >
+                        Submit Comment
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <FeedbackPanel
+                    sessionId={session.id}
+                    feedback={feedback}
+                    onAddFeedback={onAddFeedback}
+                    onAddAudioResponse={onAddAudioResponse}
+                    currentTimestamp={currentTimestamp}
+                    selectedFeedback={selectedFeedbackId}
+                    className="h-full"
+                  />
                 )}
               </div>
             </div>
-          </div>
-        )}
-      </div>
-      {/* Inline feedback form that appears when text is selected */}
-      {showFeedbackForm && transcriptSelection && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-lg mx-auto">
-            <CardHeader>
-              <CardTitle className="text-lg">Add Feedback</CardTitle>
-              <CardDescription>
-                {transcriptSelection.text ? (
-                  <div className="mt-2 p-2 bg-blue-50 rounded-md text-sm">
-                    <p className="font-medium">Selected text:</p>
-                    <p>"{transcriptSelection.text}"</p>
-                    <p className="text-xs mt-1">
-                      {formatDuration(transcriptSelection.startTime)} -{" "}
-                      {formatDuration(transcriptSelection.endTime)}
-                    </p>
-                  </div>
-                ) : (
-                  <p>At {formatDuration(transcriptSelection.startTime)}</p>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Input
-                    placeholder="Title (optional)"
-                    value={feedbackTitle}
-                    onChange={(e) => setFeedbackTitle(e.target.value)}
-                  />
-                </div>
-
-                {/* Feedback Mode Toggle */}
-                <div className="flex items-center space-x-4 mb-2">
-                  <label className="block text-sm font-medium">
-                    Feedback Type:
-                  </label>
-                  <div className="flex space-x-4">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={feedbackMode === "text"}
-                        onChange={() => setFeedbackMode("text")}
-                        className="h-4 w-4 text-blue-600"
-                      />
-                      <span>Text Feedback</span>
-                    </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={feedbackMode === "audio"}
-                        onChange={() => setFeedbackMode("audio")}
-                        className="h-4 w-4 text-blue-600"
-                      />
-                      <span>Audio Feedback</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Text Feedback Input */}
-                {feedbackMode === "text" && (
-                  <div>
-                    <Textarea
-                      placeholder="Your feedback..."
-                      className="min-h-[150px]"
-                      value={feedbackText}
-                      onChange={(e) => setFeedbackText(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {/* Audio feedback recording controls */}
-                {feedbackMode === "audio" && (
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <label className="block text-sm font-medium mb-2">
-                      Audio Feedback
-                    </label>
-                    <div className="flex items-center gap-2">
-                      {!audioFeedbackBlob ? (
-                        <Button
-                          variant={
-                            isRecordingFeedback ? "destructive" : "outline"
-                          }
-                          onClick={
-                            isRecordingFeedback
-                              ? stopRecordingFeedback
-                              : startRecordingFeedback
-                          }
-                          className="flex items-center gap-2"
-                        >
-                          <Mic
-                            size={16}
-                            className={
-                              isRecordingFeedback ? "animate-pulse" : ""
-                            }
-                          />
-                          {isRecordingFeedback
-                            ? "Stop Recording"
-                            : "Record Audio Feedback"}
-                        </Button>
-                      ) : (
-                        <div className="flex items-center gap-2 flex-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={playFeedbackAudio}
-                            disabled={false}
-                            className="flex items-center gap-1"
-                          >
-                            {isFeedbackAudioPlaying ? (
-                              <Pause size={14} />
-                            ) : (
-                              <Play size={14} />
-                            )}
-                            {isFeedbackAudioPlaying ? "Playing..." : "Play"}
-                          </Button>
-                          <div className="h-2 bg-gray-200 rounded-full overflow-hidden flex-1">
-                            <div
-                              className="h-full bg-blue-500 rounded-full"
-                              style={{
-                                width: isFeedbackAudioPlaying ? "100%" : "0%",
-                                transition: "width 3s linear",
-                              }}
-                            />
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearFeedbackAudio}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowFeedbackForm(false);
-                  setTranscriptSelection(null);
-                  setFeedbackTitle("");
-                  setFeedbackText("");
-                  setAudioFeedbackBlob(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddFeedbackForSelection}
-                disabled={
-                  (feedbackMode === "text" && !feedbackText.trim()) ||
-                  (feedbackMode === "audio" && !audioFeedbackBlob)
-                }
-              >
-                Save Feedback
-              </Button>
-            </CardFooter>
-          </Card>
+          )}
         </div>
-      )}
-      {/* Mini player that stays visible when scrolling, only when full player is not visible */}
-      <div className="h-16"></div> {/* Spacer for the mini player */}
+      </div>
+
+      {/* Mini player - shown when full player is not visible */}
       {!isFullPlayerVisible && (
         <MiniPlayer
           currentTime={currentTimestamp}
@@ -1066,7 +955,6 @@ const SessionDetail = ({
           onSeek={handleSeek}
           onSkipBackward={handleSkipBackward}
           onSkipForward={handleSkipForward}
-          className="z-30"
         />
       )}
     </div>

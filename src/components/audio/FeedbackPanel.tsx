@@ -66,6 +66,12 @@ const FeedbackPanel = ({
   const [feedbackMode, setFeedbackMode] = useState<"text" | "audio">("text");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
+  const [editingFeedbackId, setEditingFeedbackId] = useState<string | null>(
+    null,
+  );
+  const [replyingToFeedbackId, setReplyingToFeedbackId] = useState<
+    string | null
+  >(null);
 
   const formatTimestamp = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -79,6 +85,12 @@ const FeedbackPanel = ({
       setStartTimestamp(currentTimestamp);
     }
   }, [currentTimestamp]);
+
+  // Reset editing/replying state when feedback changes
+  useEffect(() => {
+    setEditingFeedbackId(null);
+    setReplyingToFeedbackId(null);
+  }, [feedback]);
 
   // Start recording audio feedback
   const startRecordingFeedback = async () => {
@@ -462,7 +474,7 @@ const FeedbackPanel = ({
                   <div
                     id={`feedback-${item.id}`}
                     key={item.id}
-                    className="bg-gray-50 rounded-lg p-4 transition-colors duration-300"
+                    className="bg-gray-50 rounded-lg p-4 transition-colors duration-300 mb-4"
                   >
                     <div className="flex items-start gap-3 mb-2">
                       <Avatar>
@@ -524,7 +536,99 @@ const FeedbackPanel = ({
                           </div>
                         )}
                       </div>
+
+                      {/* Edit and Reply buttons */}
+                      <div className="flex justify-end mt-2 gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setReplyingToFeedbackId(item.id)}
+                        >
+                          <MessageSquare size={12} className="mr-1" /> Reply
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setEditingFeedbackId(item.id)}
+                        >
+                          Edit
+                        </Button>
+                      </div>
                     </div>
+
+                    {/* Edit form */}
+                    {editingFeedbackId === item.id && (
+                      <div className="mt-3 bg-gray-50 p-3 rounded-md">
+                        <h4 className="text-sm font-medium mb-2">
+                          Edit Feedback
+                        </h4>
+                        <textarea
+                          className="w-full p-2 border rounded-md text-sm mb-2"
+                          defaultValue={item.text}
+                          rows={3}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingFeedbackId(null)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              // In a real app, you would save the changes
+                              console.log(
+                                `Saving edited feedback for ${item.id}`,
+                              );
+                              setEditingFeedbackId(null);
+                            }}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reply form */}
+                    {replyingToFeedbackId === item.id && (
+                      <div className="mt-3 bg-gray-50 p-3 rounded-md">
+                        <h4 className="text-sm font-medium mb-2">
+                          Reply to Feedback
+                        </h4>
+                        <textarea
+                          className="w-full p-2 border rounded-md text-sm mb-2"
+                          placeholder="Type your reply here..."
+                          rows={3}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setReplyingToFeedbackId(null)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              // In a real app, you would save the reply
+                              console.log(
+                                `Saving reply to feedback ${item.id}`,
+                              );
+                              setReplyingToFeedbackId(null);
+                            }}
+                          >
+                            Reply
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Audio response section */}
                     <div className="mt-3 pl-12">

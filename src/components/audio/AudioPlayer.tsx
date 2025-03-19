@@ -44,6 +44,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const volumeSliderTimeoutRef = useRef<number | null>(null);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const volumeControlRef = useRef<HTMLDivElement>(null);
@@ -71,6 +72,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audio.removeEventListener("ended", handleEnded);
     };
   }, [onTimeUpdate]);
+
+  // Hide volume slider after 2 seconds of inactivity
+  useEffect(() => {
+    const handleMouseMove = () => {
+      if (volumeSliderTimeoutRef.current) {
+        window.clearTimeout(volumeSliderTimeoutRef.current);
+      }
+      if (showVolumeSlider) {
+        volumeSliderTimeoutRef.current = window.setTimeout(() => {
+          setShowVolumeSlider(false);
+        }, 2000);
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (volumeSliderTimeoutRef.current) {
+        window.clearTimeout(volumeSliderTimeoutRef.current);
+      }
+    };
+  }, [showVolumeSlider]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -128,7 +151,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   return (
     <div className="w-full p-4 bg-white rounded-lg shadow-sm">
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        crossOrigin="anonymous"
+      />
 
       {/* Waveform visualization with markers */}
       <div className="relative h-12 bg-gray-100 rounded-md mb-2 overflow-hidden">
@@ -226,24 +254,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
             <SkipForward size={20} />
           </Button>
 
-          {onAddFeedback && (
-            <Button
-              variant="outline"
-              onClick={onAddFeedback}
-              className="ml-2 text-blue-600 border-blue-600 hover:bg-blue-50"
-            >
-              <MessageSquare size={16} className="mr-2" />
-              Add Feedback at Current Time
-            </Button>
-          )}
+          {/* Removed 'Add Feedback at Current Time' button */}
         </div>
 
         {/* Volume control - moved to the right */}
         <div
           className="relative md:block"
           ref={volumeControlRef}
-          onMouseEnter={() => setShowVolumeSlider(true)}
-          onMouseLeave={() => setShowVolumeSlider(false)}
+          onMouseEnter={() => {
+            setShowVolumeSlider(true);
+            if (volumeSliderTimeoutRef.current) {
+              window.clearTimeout(volumeSliderTimeoutRef.current);
+              volumeSliderTimeoutRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            if (volumeSliderTimeoutRef.current) {
+              window.clearTimeout(volumeSliderTimeoutRef.current);
+            }
+            volumeSliderTimeoutRef.current = window.setTimeout(() => {
+              setShowVolumeSlider(false);
+            }, 2000);
+          }}
         >
           <Button
             variant="ghost"

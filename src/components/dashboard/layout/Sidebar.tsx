@@ -107,7 +107,7 @@ const Sidebar = ({ activeItem, isCollapsed, setIsCollapsed }: SidebarProps) => {
       >
         <div className="p-2"></div>
 
-        <ScrollArea className="h-[calc(100%-3.5rem)]">
+        <ScrollArea className="h-[calc(100vh-var(--header-height,4rem)-1rem)]">
           <div className="space-y-1 p-2">
             {defaultItems.map((item) => (
               <Button
