@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSidebar } from "@/context/SidebarContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { supabase } from "@/supabase/supabase";
 import {
   Search,
   User,
@@ -31,7 +32,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "../../../../supabase/auth";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from "@supabase/supabase-js";
 
 interface SearchResult {
   id: string;
@@ -71,11 +71,6 @@ const TopNavigation = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
-
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY,
-  );
 
   useEffect(() => {
     const performSearch = async () => {
