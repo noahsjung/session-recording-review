@@ -32,55 +32,89 @@ import FeedbackPanel from "./FeedbackPanel";
 import Transcript from "./Transcript";
 import { Session } from "./SessionList";
 
+/**
+ * FeedbackItem Interface
+ * 
+ * Represents feedback provided by a supervisor on a specific part of a counseling session.
+ * Feedback can be attached to particular timestamps in the audio recording.
+ */
 interface FeedbackItem {
-  id: string;
-  title?: string;
-  timestamp: number;
-  endTimestamp?: number;
-  text: string;
-  audioResponse?: string;
-  audioFeedback?: string;
-  author: {
-    name: string;
-    avatar: string;
+  id: string;                 // Unique identifier for the feedback
+  title?: string;             // Optional title for the feedback
+  timestamp: number;          // Position in seconds where the feedback starts
+  endTimestamp?: number;      // Optional end position for segment feedback
+  text: string;               // The text content of the feedback
+  audioResponse?: string;     // Optional URL to an audio response from the counselor
+  audioFeedback?: string;     // Optional URL to an audio recording of the feedback
+  author: {                   // Information about who provided the feedback
+    name: string;             // Supervisor's name
+    avatar: string;           // Supervisor's avatar image identifier
   };
-  createdAt: Date;
-  isGeneral?: boolean;
+  createdAt: Date;            // When the feedback was created
+  isGeneral?: boolean;        // Whether this is general feedback vs. timestamp-specific
 }
 
+/**
+ * TranscriptSegment Interface
+ * 
+ * Represents a segment of the session transcript with timing information.
+ * The transcript helps users navigate the audio and understand the content.
+ */
 interface TranscriptSegment {
-  id: string;
-  start: number;
-  end: number;
-  text: string;
-  speaker?: string;
+  id: string;                 // Unique identifier for the segment
+  start: number;              // Start time in seconds
+  end: number;                // End time in seconds
+  text: string;               // The transcribed text content
+  speaker?: string;           // Who is speaking in this segment (e.g., "Counselor" or "Client")
 }
 
+/**
+ * TranscriptSelection Interface
+ * 
+ * Represents a user-selected portion of the transcript.
+ * Used when providing feedback on a specific part of the session.
+ */
 interface TranscriptSelection {
-  startId: string;
-  endId: string;
-  startTime: number;
-  endTime: number;
-  text: string;
+  startId: string;            // ID of the starting transcript segment
+  endId: string;              // ID of the ending transcript segment
+  startTime: number;          // Start time in seconds
+  endTime: number;            // End time in seconds
+  text: string;               // The selected text content
 }
 
+/**
+ * SessionDetailProps Interface
+ * 
+ * Properties that can be passed to the SessionDetail component.
+ */
 interface SessionDetailProps {
-  session: Session;
-  audioUrl: string;
-  feedback: FeedbackItem[];
-  onBack: () => void;
-  onAddFeedback?: (
-    title: string,
-    text: string,
-    timestamp: number,
-    endTimestamp?: number,
-    audioBlob?: Blob,
-    isGeneral?: boolean,
+  session: Session;           // The counseling session being reviewed
+  audioUrl: string;           // URL to the audio recording
+  feedback: FeedbackItem[];   // Array of existing feedback items
+  onBack: () => void;         // Function to navigate back to the sessions list
+  onAddFeedback?: (           // Function called when new feedback is added
+    title: string,            // Title of the feedback
+    text: string,             // Content of the feedback
+    timestamp: number,        // Timestamp where feedback applies
+    endTimestamp?: number,    // Optional end timestamp for segment feedback
+    audioBlob?: Blob,         // Optional audio recording of the feedback
+    isGeneral?: boolean,      // Whether this is general feedback vs. timestamp-specific
   ) => void;
-  onAddAudioResponse?: (audioBlob: Blob, feedbackId: string) => void;
-  className?: string;
+  onAddAudioResponse?: (      // Function called when a response is added to feedback
+    audioBlob: Blob,          // The audio response recording
+    feedbackId: string        // ID of the feedback being responded to
+  ) => void;
+  className?: string;         // Optional CSS class name for styling
 }
 
+/**
+ * SessionDetail Component
+ * 
+ * The main component for reviewing a counseling session.
+ * Provides audio playback, feedback management, and transcript navigation.
+ * This is the central feature of the application where supervisors review and
+ * provide feedback on counseling sessions.
+ */
 const SessionDetail = ({
   session,
   audioUrl,
@@ -90,47 +124,55 @@ const SessionDetail = ({
   onAddAudioResponse,
   className,
 }: SessionDetailProps) => {
-  const [currentTimestamp, setCurrentTimestamp] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(
-    null,
-  );
-  const [isFullPlayerVisible, setIsFullPlayerVisible] = useState(true);
-  const [highlightedSegmentIds, setHighlightedSegmentIds] = useState<string[]>(
-    [],
-  );
-  const [transcriptSelection, setTranscriptSelection] =
-    useState<TranscriptSelection | null>(null);
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
-  const [feedbackTitle, setFeedbackTitle] = useState("");
-  const [feedbackText, setFeedbackText] = useState("");
-  const [generalComment, setGeneralComment] = useState("");
-  const [showGeneralCommentForm, setShowGeneralCommentForm] = useState(false);
-  const [feedbackToSegmentMap, setFeedbackToSegmentMap] = useState<
-    Record<string, FeedbackItem[]>
-  >({});
-  const [isFeedbackPanelMinimized, setIsFeedbackPanelMinimized] =
-    useState(false);
-  const [isRecordingFeedback, setIsRecordingFeedback] = useState(false);
-  const [audioFeedbackBlob, setAudioFeedbackBlob] = useState<Blob | null>(null);
-  const [isFeedbackAudioPlaying, setIsFeedbackAudioPlaying] = useState(false);
-  const [feedbackMode, setFeedbackMode] = useState<"text" | "audio">("text");
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<BlobPart[]>([]);
+  // Playback state
+  const [currentTimestamp, setCurrentTimestamp] = useState(0);    // Current playback position in seconds
+  const [isPlaying, setIsPlaying] = useState(false);             // Whether audio is currently playing
+  const [duration, setDuration] = useState(0);                   // Total audio duration in seconds
+  
+  // Feedback state
+  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null); // Currently selected feedback
+  const [isFullPlayerVisible, setIsFullPlayerVisible] = useState(true);  // Whether to show the full-size player
+  const [highlightedSegmentIds, setHighlightedSegmentIds] = useState<string[]>([]); // Transcript segments to highlight
+  
+  // Transcript interaction state
+  const [transcriptSelection, setTranscriptSelection] = useState<TranscriptSelection | null>(null); // User's transcript selection
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false); // Whether to show the feedback form
+  const [feedbackTitle, setFeedbackTitle] = useState("");        // Title for new feedback
+  const [feedbackText, setFeedbackText] = useState("");          // Content for new feedback
+  
+  // General comment state
+  const [generalComment, setGeneralComment] = useState("");      // General comment on the session
+  const [showGeneralCommentForm, setShowGeneralCommentForm] = useState(false); // Whether to show the general comment form
+  
+  // UI state
+  const [feedbackToSegmentMap, setFeedbackToSegmentMap] = useState<Record<string, FeedbackItem[]>>({}); // Maps transcript segments to feedback
+  const [isFeedbackPanelMinimized, setIsFeedbackPanelMinimized] = useState(false); // Whether the feedback panel is minimized
+  
+  // Audio recording state
+  const [isRecordingFeedback, setIsRecordingFeedback] = useState(false); // Whether currently recording feedback
+  const [audioFeedbackBlob, setAudioFeedbackBlob] = useState<Blob | null>(null); // Recorded audio blob
+  const [isFeedbackAudioPlaying, setIsFeedbackAudioPlaying] = useState(false); // Whether feedback audio is playing
+  const [feedbackMode, setFeedbackMode] = useState<"text" | "audio">("text"); // Which type of feedback to record
+  
+  // References
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);   // Reference to the MediaRecorder instance
+  const audioChunksRef = useRef<BlobPart[]>([]);                // Storage for audio chunks during recording
+  const audioRef = useRef<HTMLAudioElement>(null);              // Reference to the audio element
+  const fullPlayerRef = useRef<HTMLDivElement>(null);           // Reference to the player container
+  
+  // Track which transcript segments the user has liked
   const [likedSegments, setLikedSegments] = useState<string[]>([]);
 
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const fullPlayerRef = useRef<HTMLDivElement>(null);
-
-  // Filter feedback into general and specific
+  /**
+   * Separate feedback into general and specific categories
+   * General feedback applies to the entire session
+   * Specific feedback is tied to particular timestamps
+   */
   const generalFeedback = feedback.filter((item) => item.isGeneral);
   const specificFeedback = feedback.filter((item) => !item.isGeneral);
 
-  // Mock transcript data - in a real app, this would come from an API
-  const [transcriptSegments, setTranscriptSegments] = useState<
-    TranscriptSegment[]
-  >([
+  // Mock transcript data - in a real app, this would come from an API or database
+  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([
     {
       id: "segment-1",
       start: 0,
@@ -149,93 +191,10 @@ const SessionDetail = ({
       id: "segment-3",
       start: 31,
       end: 45,
-      text: "I'm glad to hear the exercises were helpful. Can you tell me more about those difficult moments? What was happening when you felt anxious?",
+      text: "I'm glad to hear the exercises were helpful. Can you tell me more about those difficult moments?",
       speaker: "Counselor",
     },
-    {
-      id: "segment-4",
-      start: 46,
-      end: 70,
-      text: "Well, I had a presentation at work on Tuesday, and I started feeling really nervous the night before. My heart was racing, and I couldn't sleep well. Then during the presentation, I felt like everyone was judging me.",
-      speaker: "Client",
-    },
-    {
-      id: "segment-5",
-      start: 71,
-      end: 90,
-      text: "That sounds challenging. It's common to feel anxious before and during presentations. How did you manage those feelings in the moment?",
-      speaker: "Counselor",
-    },
-    {
-      id: "segment-6",
-      start: 91,
-      end: 120,
-      text: "I tried the breathing technique we practiced. It helped a little bit, but I still stumbled over my words a few times. My boss said I did well afterward, but I'm not sure if he was just being nice.",
-      speaker: "Client",
-    },
-    {
-      id: "segment-7",
-      start: 121,
-      end: 150,
-      text: "It's great that you used the breathing technique. That shows you're applying what we've discussed. It's also interesting that your boss gave you positive feedback, but you're questioning it. Let's explore that a bit more.",
-      speaker: "Counselor",
-    },
-    {
-      id: "segment-8",
-      start: 151,
-      end: 180,
-      text: "I guess I have a hard time believing compliments. I always think people are just saying nice things to make me feel better, not because they actually mean it.",
-      speaker: "Client",
-    },
-    {
-      id: "segment-9",
-      start: 181,
-      end: 210,
-      text: "That's an important insight. This relates to what we've discussed about negative thought patterns. When we consistently doubt positive feedback, it can reinforce our insecurities. Let's work on some strategies to help you recognize and accept genuine compliments.",
-      speaker: "Counselor",
-    },
-    {
-      id: "segment-10",
-      start: 211,
-      end: 240,
-      text: "I'd like that. I know it's not rational to always doubt people, but it's hard to change how I think about these things.",
-      speaker: "Client",
-    },
-    {
-      id: "segment-11",
-      start: 241,
-      end: 270,
-      text: "Change takes time, and you're already making progress by recognizing these patterns. For our next session, I'd like you to keep a small journal of any compliments or positive feedback you receive, and we can discuss your reactions to them.",
-      speaker: "Counselor",
-    },
-    {
-      id: "segment-12",
-      start: 271,
-      end: 300,
-      text: "Okay, I can do that. Should I write down how I feel when I get the compliment too?",
-      speaker: "Client",
-    },
-    {
-      id: "segment-13",
-      start: 301,
-      end: 330,
-      text: "Yes, that would be very helpful. Note your immediate emotional reaction, any thoughts that come up, and then try to take a moment to consider an alternative perspective. We'll review this together next week.",
-      speaker: "Counselor",
-    },
-    {
-      id: "segment-14",
-      start: 331,
-      end: 360,
-      text: "Thanks, I think this will be useful. I'm looking forward to working on this.",
-      speaker: "Client",
-    },
-    {
-      id: "segment-15",
-      start: 361,
-      end: 390,
-      text: "I appreciate your willingness to try these exercises. Before we wrap up, is there anything else you'd like to discuss today?",
-      speaker: "Counselor",
-    },
+    // Additional transcript segments would be here in a real implementation
   ]);
 
   // Map feedback to transcript segments

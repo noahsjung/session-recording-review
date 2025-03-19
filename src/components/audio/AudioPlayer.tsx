@@ -11,26 +11,51 @@ import {
 import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
 
+/**
+ * Marker Interface
+ * 
+ * Represents a point or segment in the audio timeline where feedback has been added.
+ * These markers will be displayed on the audio progress bar.
+ */
 interface Marker {
-  id: string;
-  timestamp: number;
-  endTimestamp?: number;
+  id: string;               // Unique identifier for the marker
+  timestamp: number;        // Position in seconds where the marker starts
+  endTimestamp?: number;    // Optional end position for segment markers
 }
 
+/**
+ * AudioPlayer Props
+ * 
+ * Properties that can be passed to the AudioPlayer component.
+ */
 interface AudioPlayerProps {
-  src: string;
-  feedbackMarkers?: Marker[];
-  onMarkerClick?: (markerId: string) => void;
-  onTimeUpdate?: (time: number) => void;
-  onAddFeedback?: () => void;
+  src: string;              // URL of the audio file to play
+  feedbackMarkers?: Marker[]; // Optional array of feedback markers to display
+  onMarkerClick?: (markerId: string) => void;  // Called when a marker is clicked
+  onTimeUpdate?: (time: number) => void;       // Called when playback position changes
+  onAddFeedback?: () => void;                 // Called when user wants to add feedback
 }
 
+/**
+ * Format Time Helper Function
+ * 
+ * Converts seconds into a human-readable format (MM:SS).
+ * 
+ * @param seconds - Time in seconds to format
+ * @returns Formatted time string (e.g., "3:45")
+ */
 const formatTime = (seconds: number): string => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
+/**
+ * AudioPlayer Component
+ * 
+ * A customizable audio player that provides playback controls,
+ * volume adjustment, and displays feedback markers on the timeline.
+ */
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src,
   feedbackMarkers = [],
@@ -38,34 +63,49 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   onTimeUpdate,
   onAddFeedback,
 }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.7);
-  const [isMuted, setIsMuted] = useState(false);
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
-  const volumeSliderTimeoutRef = useRef<number | null>(null);
+  // State for player functionality
+  const [isPlaying, setIsPlaying] = useState(false);        // Whether audio is currently playing
+  const [currentTime, setCurrentTime] = useState(0);        // Current playback position in seconds
+  const [duration, setDuration] = useState(0);              // Total audio duration in seconds
+  const [volume, setVolume] = useState(0.7);                // Volume level (0-1)
+  const [isMuted, setIsMuted] = useState(false);            // Whether audio is muted
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false); // Whether to show volume controls
 
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const volumeControlRef = useRef<HTMLDivElement>(null);
+  // References to DOM elements and timers
+  const audioRef = useRef<HTMLAudioElement>(null);          // Reference to the audio element
+  const volumeControlRef = useRef<HTMLDivElement>(null);    // Reference to volume control UI
+  const volumeSliderTimeoutRef = useRef<number | null>(null); // Timeout for hiding volume slider
 
+  /**
+   * Effect: Set up audio event listeners
+   * 
+   * Adds event listeners to the audio element to track playback state,
+   * update UI, and notify parent components of changes.
+   */
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Update current time and notify parent when playback position changes
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
       if (onTimeUpdate) {
         onTimeUpdate(audio.currentTime);
       }
     };
+
+    // Set total duration when metadata is loaded
     const handleLoadedMetadata = () => setDuration(audio.duration);
+    
+    // Update UI when playback ends
     const handleEnded = () => setIsPlaying(false);
 
+    // Add event listeners
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     audio.addEventListener("ended", handleEnded);
 
+    // Clean up event listeners when component unmounts
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -73,12 +113,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, [onTimeUpdate]);
 
-  // Hide volume slider after 2 seconds of inactivity
+  /**
+   * Effect: Handle volume slider timeout
+   * 
+   * Automatically hides the volume slider after 2 seconds of inactivity.
+   */
   useEffect(() => {
     const handleMouseMove = () => {
+      // Clear any existing timeout
       if (volumeSliderTimeoutRef.current) {
         window.clearTimeout(volumeSliderTimeoutRef.current);
       }
+      
+      // Set a new timeout if the volume slider is visible
       if (showVolumeSlider) {
         volumeSliderTimeoutRef.current = window.setTimeout(() => {
           setShowVolumeSlider(false);
@@ -86,7 +133,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       }
     };
 
+    // Add event listener for mouse movement
     window.addEventListener("mousemove", handleMouseMove);
+    
+    // Clean up event listener when component unmounts
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       if (volumeSliderTimeoutRef.current) {
@@ -95,26 +145,50 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
   }, [showVolumeSlider]);
 
+  /**
+   * Effect: Handle play/pause state
+   * 
+   * Plays or pauses the audio when isPlaying state changes.
+   */
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (isPlaying) {
+      // Try to play and handle any errors (like autoplay restrictions)
       audio.play().catch(() => setIsPlaying(false));
     } else {
       audio.pause();
     }
   }, [isPlaying]);
 
+  /**
+   * Effect: Handle volume changes
+   * 
+   * Updates audio volume when volume state or mute state changes.
+   */
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Set volume to 0 if muted, otherwise use volume state
     audio.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
+  /**
+   * Toggle Play/Pause
+   * 
+   * Switches between playing and paused states.
+   */
   const togglePlayPause = () => setIsPlaying(!isPlaying);
 
+  /**
+   * Handle Seek
+   * 
+   * Called when user drags the progress slider to change playback position.
+   * 
+   * @param values - Array containing the new playback position in seconds
+   */
   const handleSeek = (values: number[]) => {
     const newTime = values[0];
     if (audioRef.current) {
@@ -123,26 +197,51 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
   };
 
+  /**
+   * Handle Volume Change
+   * 
+   * Called when user adjusts the volume slider.
+   * 
+   * @param values - Array containing the new volume level (0-1)
+   */
   const handleVolumeChange = (values: number[]) => {
     const newVolume = values[0];
     setVolume(newVolume);
+    // Unmute if volume is increased from zero
     if (newVolume > 0 && isMuted) {
       setIsMuted(false);
     }
   };
 
+  /**
+   * Toggle Mute
+   * 
+   * Toggles between muted and unmuted states.
+   */
   const toggleMute = () => setIsMuted(!isMuted);
 
+  /**
+   * Skip Backward
+   * 
+   * Jumps back 10 seconds in the audio.
+   */
   const skipBackward = () => {
     if (audioRef.current) {
+      // Ensure we don't go below 0
       const newTime = Math.max(audioRef.current.currentTime - 10, 0);
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
     }
   };
 
+  /**
+   * Skip Forward
+   * 
+   * Jumps ahead 10 seconds in the audio.
+   */
   const skipForward = () => {
     if (audioRef.current) {
+      // Ensure we don't go beyond the duration
       const newTime = Math.min(audioRef.current.currentTime + 10, duration);
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
