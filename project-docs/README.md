@@ -61,6 +61,19 @@ The documentation is organized into several key sections:
    - Code conventions and patterns
    - Guide for non-technical users
 
+9. [**Component Refactoring Guide**](./09-component-refactoring.md)
+   - Why components were refactored
+   - SessionDetail component breakdown
+   - AudioPlayer component breakdown
+   - Benefits of the new structure
+   - Working with refactored components
+
+10. [**AudioSection Refactoring**](./audio-section-refactoring.md)
+   - AudioSection component breakdown
+   - Component structure and responsibilities
+   - Custom hooks for visibility detection
+   - Improvements and benefits
+
 ## How to Use This Documentation
 
 This documentation is designed to be both a reference for existing team members and an onboarding resource for new developers. Here's how to make the most of it:
@@ -70,7 +83,8 @@ This documentation is designed to be both a reference for existing team members 
 1. Start with the [Project Overview](./01-project-overview.md) to understand the application's purpose and architecture.
 2. Review the [Development Workflow](./07-development-workflow.md) to set up your local environment.
 3. Read the [Code Organization Guide](./08-code-organization-guide.md) to understand how the codebase is structured.
-4. Explore the other documents based on your specific role or the features you'll be working on.
+4. Study the [Component Refactoring Guide](./09-component-refactoring.md) and [AudioSection Refactoring](./audio-section-refactoring.md) to learn about our recent component improvements.
+5. Explore the other documents based on your specific role or the features you'll be working on.
 
 ### For Non-Technical Users
 
@@ -82,7 +96,8 @@ This documentation is designed to be both a reference for existing team members 
 
 1. Use the documentation as a reference when working on specific features.
 2. Consult the relevant sections when making architectural decisions.
-3. Keep the documentation updated as the project evolves.
+3. Review the [Component Refactoring Guide](./09-component-refactoring.md) and [AudioSection Refactoring](./audio-section-refactoring.md) to understand recent code organization changes.
+4. Keep the documentation updated as the project evolves.
 
 ## Contributing to the Documentation
 
