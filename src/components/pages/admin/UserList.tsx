@@ -223,7 +223,7 @@ export default function UserList() {
                     <TableCell>
                       {user.role === "supervisor" ? (
                         <Badge
-                          variant={user.is_approved ? "success" : "destructive"}
+                          variant={user.is_approved ? "default" : "destructive"}
                           className={
                             user.is_approved
                               ? "bg-green-100 text-green-800"

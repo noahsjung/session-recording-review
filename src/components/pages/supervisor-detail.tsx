@@ -156,7 +156,7 @@ const SupervisorDetailPage = () => {
                   <div className="flex flex-col items-center">
                     <Avatar className="h-24 w-24 mb-4">
                       <AvatarImage
-                        src={supervisor.avatarUrl}
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${supervisor.avatar}`}
                         alt={supervisor.name}
                       />
                       <AvatarFallback>
@@ -199,7 +199,7 @@ const SupervisorDetailPage = () => {
                       <div>
                         <p className="font-medium">Certifications</p>
                         <p className="text-gray-500">
-                          {supervisor.certifications.join(", ")}
+                          {supervisor.certifications?.join(", ")}
                         </p>
                       </div>
                     </div>

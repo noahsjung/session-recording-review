@@ -26,8 +26,12 @@ const SupervisorsPage = () => {
       specialization: "Cognitive Behavioral Therapy",
       education: "Ph.D. in Psychology",
       experience: "10+ years experience",
-      certifications: "Licensed Professional Counselor",
+      certifications: ["Licensed Professional Counselor"],
       isAvailable: true,
+      avatar: "sarah",
+      level: "Senior",
+      background: "Clinical Psychology",
+      introduction: "Specializes in CBT and trauma-informed care",
     },
     {
       id: "2",
@@ -35,8 +39,12 @@ const SupervisorsPage = () => {
       specialization: "Family Therapy",
       education: "Ph.D. in Clinical Psychology",
       experience: "8 years experience",
-      certifications: "Board Certified Psychologist",
+      certifications: ["Board Certified Psychologist"],
       isAvailable: true,
+      avatar: "michael",
+      level: "Mid-level",
+      background: "Family Therapy",
+      introduction: "Focuses on family dynamics and cultural contexts",
     },
     {
       id: "3",
@@ -44,8 +52,12 @@ const SupervisorsPage = () => {
       specialization: "Trauma-Focused Therapy",
       education: "Psy.D. in Clinical Psychology",
       experience: "12 years experience",
-      certifications: "Certified Trauma Specialist",
+      certifications: ["Certified Trauma Specialist"],
       isAvailable: false,
+      avatar: "emily",
+      level: "Senior",
+      background: "Trauma Psychology",
+      introduction: "Specializes in trauma recovery and resilience",
     },
     {
       id: "4",
@@ -53,8 +65,12 @@ const SupervisorsPage = () => {
       specialization: "Child and Adolescent Therapy",
       education: "Ph.D. in Developmental Psychology",
       experience: "15 years experience",
-      certifications: "Child Mental Health Specialist",
+      certifications: ["Child Mental Health Specialist"],
       isAvailable: true,
+      avatar: "james",
+      level: "Senior",
+      background: "Developmental Psychology",
+      introduction: "Expert in child and adolescent mental health",
     },
     {
       id: "5",
@@ -62,8 +78,12 @@ const SupervisorsPage = () => {
       specialization: "Mindfulness-Based Therapy",
       education: "Ph.D. in Counseling Psychology",
       experience: "7 years experience",
-      certifications: "Certified Mindfulness Practitioner",
+      certifications: ["Certified Mindfulness Practitioner"],
       isAvailable: true,
+      avatar: "aisha",
+      level: "Mid-level",
+      background: "Counseling Psychology",
+      introduction: "Focuses on mindfulness and stress reduction",
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -195,7 +215,7 @@ const SupervisorsPage = () => {
                       <div className="flex items-center text-sm">
                         <Award className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
                         <span className="dark:text-gray-300">
-                          {supervisor.certifications ||
+                          {supervisor.certifications?.[0] ||
                             "Licensed Professional Counselor"}
                         </span>
                       </div>

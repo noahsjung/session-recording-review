@@ -347,8 +347,8 @@ const SessionsPage = () => {
               ) : (
                 <SessionUploader
                   supervisors={supervisors}
-                  onUpload={(data) => {
-                    handleUpload(data);
+                  onUpload={async (data) => {
+                    await handleUpload(data);
                     setActiveTab("view");
                   }}
                 />

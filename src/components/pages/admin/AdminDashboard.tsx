@@ -4,7 +4,7 @@ import TopNavigation from "../../dashboard/layout/TopNavigation";
 import Sidebar from "../../dashboard/layout/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "../../../../supabase/auth";
+import { useAuth } from "@/supabase/auth";
 import { Navigate } from "react-router-dom";
 import UserList from "./UserList";
 import { Shield, Users, UserCheck } from "lucide-react";
@@ -31,7 +31,11 @@ export default function AdminDashboard() {
           className={isCollapsed ? "w-[70px]" : "w-[240px]"}
           aria-hidden="true"
         ></div>
-        <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <Sidebar
+          activeItem="Admin"
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+        />
 
         <main className="flex-1 overflow-auto p-4 md:p-6 transition-all duration-300">
           <div className="mb-6">

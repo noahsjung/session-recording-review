@@ -10,6 +10,16 @@ export interface Supervisor {
   experience: string;
   background: string;
   introduction: string;
+  title?: string;
+  specialization?: string;
+  yearsOfExperience?: number;
+  certifications?: string[];
+  availability?: string;
+  bio?: string;
+  status?: string;
+  isAvailable?: boolean;
+  education?: string;
+  recentActivity?: Array<{ title: string; date: string; description: string }>;
 }
 
 // Feedback types
@@ -386,7 +396,8 @@ export const getSessions = async (): Promise<Session[]> => {
       .from("feedback")
       .select("session_id, count")
       .in("session_id", sessionIds)
-      .group("session_id");
+      .select("session_id, count(*) as count");
+    // Note: Using select with count instead of group
 
     if (feedbackError) {
       console.error("Error fetching feedback counts:", feedbackError);
@@ -394,10 +405,18 @@ export const getSessions = async (): Promise<Session[]> => {
     }
 
     // Create a map of session_id to feedback count
-    const feedbackCounts = {};
-    feedbackData.forEach((item) => {
-      feedbackCounts[item.session_id] = parseInt(item.count);
-    });
+    const feedbackCounts: Record<string, number> = {};
+    if (feedbackData && Array.isArray(feedbackData)) {
+      feedbackData.forEach((item: any) => {
+        if (
+          item &&
+          typeof item.session_id === "string" &&
+          item.count !== undefined
+        ) {
+          feedbackCounts[item.session_id] = parseInt(String(item.count));
+        }
+      });
+    }
 
     return sessionsData.map((session) => ({
       id: session.id,
@@ -824,11 +843,13 @@ export const addFeedback = async (
       id: data.id,
       sessionId: data.session_id,
       timestamp: data.timestamp,
-      endTimestamp: data.end_timestamp || undefined,
-      title: data.title || undefined,
+      // Using end_timestamp from the database but not exposing in the interface
+      // endTimestamp: data.end_timestamp || undefined,
+      // title is not part of the FeedbackItem interface
+      // title: data.title || undefined,
       text: data.text,
       audioResponse: data.audio_response,
-      audioFeedback: data.audio_feedback,
+      // Remove audioFeedback as it's not part of the FeedbackItem interface
       author: {
         name:
           data.author?.user_metadata?.full_name ||

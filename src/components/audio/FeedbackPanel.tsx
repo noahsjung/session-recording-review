@@ -12,6 +12,7 @@ interface FeedbackItem {
   title?: string;
   timestamp: number;
   endTimestamp?: number;
+  isGeneral?: boolean;
   text: string;
   audioResponse?: string;
   audioFeedback?: string;
